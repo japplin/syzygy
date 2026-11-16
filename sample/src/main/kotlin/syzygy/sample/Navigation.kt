@@ -1,43 +1,28 @@
 package syzygy.sample
 
 import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import dev.zacsweers.metro.AppScope
-import dev.zacsweers.metro.ContributesBinding
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 
-/** The three destinations of the sample's Home → Profile → Settings flow. */
-sealed interface Destination
-data object HomeKey : Destination
-data object ProfileKey : Destination
-data object SettingsKey : Destination
+enum class Destination { Home, Profile, Settings }
 
-/**
- * The navigation surface models depend on, so navigation decisions remain in testable models rather
- * than in the UI.
- */
-interface Navigator {
-    val backStack: SnapshotStateList<Destination>
-    fun goTo(key: Destination)
-    fun back(): Boolean
-}
+data class Entry(val id: Long, val destination: Destination)
 
 @Inject
 @SingleIn(AppScope::class)
-@ContributesBinding(AppScope::class)
-class NavigatorImpl : Navigator {
-    override val backStack: SnapshotStateList<Destination> = mutableStateListOf(HomeKey)
+class Navigator {
+    private val backStack = mutableStateListOf(Entry(0, Destination.Home))
+    private var nextId = 1L
 
-    override fun goTo(key: Destination) {
-        backStack.add(key)
+    val current: Entry get() = backStack.last()
+    val canGoBack: Boolean get() = backStack.size > 1
+
+    fun goTo(from: Long, destination: Destination) {
+        if (current.id == from) backStack.add(Entry(nextId++, destination))
     }
 
-    override fun back(): Boolean =
-        if (backStack.size > 1) {
-            backStack.removeAt(backStack.lastIndex)
-            true
-        } else {
-            false
-        }
+    fun back(from: Long) {
+        if (current.id == from && canGoBack) backStack.removeAt(backStack.lastIndex)
+    }
 }

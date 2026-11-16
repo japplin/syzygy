@@ -17,8 +17,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "syzygy"
 
-include(":syzygy-core")
-include(":syzygy-projection")
-include(":syzygy-nav3")
 include(":syzygy")
 include(":sample")

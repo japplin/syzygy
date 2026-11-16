@@ -40,11 +40,18 @@ dependencies {
     implementation(project(":syzygy"))
 
     implementation(platform(libs.compose.bom))
+    implementation(libs.compose.animation)
+    implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.appstate.transform)
+    implementation(libs.kotlinx.coroutines.android)
 
     androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.compose.ui.test)
+    // The version pulled in by Compose Test uses InputManager.getInstance on newer Android SDKs.
+    androidTestImplementation(libs.androidx.test.espresso)
     androidTestImplementation(libs.androidx.test.ext.junit)
 }

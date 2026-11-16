@@ -1,22 +1,52 @@
 package syzygy.sample
 
-import androidx.lifecycle.Lifecycle
-import androidx.test.core.app.ActivityScenario
+import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import org.junit.Assert.assertFalse
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+@OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 class MainActivityTest {
+    @get:Rule
+    val compose = createAndroidComposeRule<MainActivity>()
+
     @Test
-    fun launchesWithoutCrashing() {
-        ActivityScenario.launch(MainActivity::class.java).use { scenario ->
-            scenario.moveToState(Lifecycle.State.RESUMED)
-            scenario.onActivity { activity ->
-                assertFalse(activity.isFinishing)
-                assertFalse(activity.isDestroyed)
-            }
+    fun renameSurvivesActivityRecreationAndIsVisibleAfterNavigatingBack() {
+        waitForText("Hello, Ada")
+        compose.onNodeWithText("Open Profile").performClick()
+        waitForText("Profile of Ada")
+        compose.onNodeWithText("Open Settings").performClick()
+        waitForText("Settings")
+        compose.onNodeWithText("Rename").performClick()
+        waitForText("Rename profile")
+        compose.onNode(hasSetTextAction()).performTextReplacement("Grace")
+
+        compose.activityRule.scenario.recreate()
+
+        waitForText("Rename profile")
+        compose.onNodeWithText("Grace").assertExists()
+        compose.onNodeWithText("Save").performClick()
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText("Rename profile").fetchSemanticsNodes().isEmpty()
+        }
+
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        waitForText("Profile of Grace")
+        compose.runOnUiThread { compose.activity.onBackPressedDispatcher.onBackPressed() }
+        waitForText("Hello, Grace")
+    }
+
+    private fun waitForText(text: String) {
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty()
         }
     }
 }

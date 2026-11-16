@@ -1,68 +1,92 @@
 package syzygy.sample
 
+import android.app.Application
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.appstate.transform.listener
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import dev.zacsweers.metro.createGraphFactory
-import syzygy.Project
-import syzygy.ProjectionAlignment
-import syzygy.SatelliteAlignment
-import syzygy.LocalProjectionRegistry
-import syzygy.alignmentStrategy
-import syzygy.childSyzygy
-import syzygy.rootSyzygy
+import dev.zacsweers.metro.createGraph
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import syzygy.projection.LocalProjectionRegistry
+import syzygy.projection.Project
+import syzygy.projection.ProjectionHost
+import syzygy.syzygy
+
+class SyzygyApplication : Application() {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    internal val projections = ProjectionHost<AppUiState>()
+
+    override fun onCreate() {
+        super.onCreate()
+        scope.launch {
+            listener(dispatcher = Dispatchers.Main.immediate) {
+                projections.Content {
+                    syzygy {
+                        val graph = alignGraph { createGraph<AppGraph>() }
+                        graph.presenter.present(graph)
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onTerminate() {
+        scope.cancel()
+        super.onTerminate()
+    }
+}
+
+internal val LocalScreenActive = compositionLocalOf { true }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        val host = (application as SyzygyApplication).projections
         setContent {
             MaterialTheme {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    val strategy = alignmentStrategy(
-                        ProjectionAlignment,
-                        SatelliteAlignment,
-                    )
-                    val root = rootSyzygy(
-                        input = Unit,
-                        strategy = strategy,
-                    ) {
-                        val app = childSyzygy("app") { scope ->
-                            createGraphFactory<AppGraph.Factory>().create(scope)
-                        }
-
-                        when (app.navigator.backStack.last()) {
-                            HomeKey -> {
-                                val home = childSyzygy(HomeKey) { scope ->
-                                    app.homeGraphFactory.create(scope)
-                                }
-                                AppState(AppScreen.Home(home.root.transform(Unit)))
-                            }
-
-                            ProfileKey -> {
-                                val profile = childSyzygy(ProfileKey) { scope ->
-                                    app.profileGraphFactory.create(scope)
-                                }
-                                AppState(AppScreen.Profile(profile.root.transform(Unit)))
-                            }
-
-                            SettingsKey -> {
-                                val settings = childSyzygy(SettingsKey) { scope ->
-                                    app.settingsGraphFactory.create(scope)
-                                }
-                                AppState(AppScreen.Settings(settings.root.transform(Unit)))
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .windowInsetsPadding(WindowInsets.safeDrawing),
+                ) {
+                    val presentation by host.state
+                    presentation?.let { current ->
+                        val onBack = current.output.onBack
+                        BackHandler(enabled = onBack != null) { onBack?.invoke() }
+                        AnimatedContent(
+                            targetState = current,
+                            contentKey = { it.output.entryId },
+                            transitionSpec = { fadeIn() togetherWith fadeOut() },
+                            label = "Screen transition",
+                        ) { shown ->
+                            CompositionLocalProvider(
+                                LocalProjectionRegistry provides shown.projections,
+                                LocalScreenActive provides (shown.output.entryId == current.output.entryId),
+                            ) {
+                                Project(shown.output.screen)
                             }
                         }
-                    }
-
-                    CompositionLocalProvider(LocalProjectionRegistry provides root.projectionRegistry) {
-                        val state by root
-                        Project(state)
                     }
                 }
             }

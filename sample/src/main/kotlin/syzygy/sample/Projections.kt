@@ -3,21 +3,19 @@ package syzygy.sample
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import syzygy.Project
-import syzygy.Projection
+import syzygy.projection.Project
+import syzygy.projection.Projection
 
-/**
- * Each graph contributes the matching projection registry entry. Projections remain pure functions of
- * output — every event and value they need was computed by the model and passed through state.
- */
-
-class HomeProjection : Projection<HomeState> {
+object HomeProjection : Projection<HomeState> {
     @Composable
     override fun project(output: HomeState) {
         Column(
@@ -25,14 +23,15 @@ class HomeProjection : Projection<HomeState> {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(output.greeting, style = MaterialTheme.typography.headlineMedium)
-            // The nested clock shares the root Molecule composition.
             Text("On this screen for ${output.secondsOnScreen}s")
-            Button(onClick = output.onOpenProfile) { Text("Open Profile") }
+            Button(onClick = output.onOpenProfile, enabled = LocalScreenActive.current) {
+                Text("Open Profile")
+            }
         }
     }
 }
 
-class ProfileProjection : Projection<ProfileState> {
+object ProfileProjection : Projection<ProfileState> {
     @Composable
     override fun project(output: ProfileState) {
         Column(
@@ -40,32 +39,52 @@ class ProfileProjection : Projection<ProfileState> {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Profile of ${output.displayName}", style = MaterialTheme.typography.headlineMedium)
-            Text("Viewed ${output.screenViews} time(s) this session")
-            Button(onClick = output.onOpenSettings) { Text("Open Settings") }
+            Text("Viewed ${output.screenViews} time(s) in this visit")
+            Button(onClick = output.onOpenSettings, enabled = LocalScreenActive.current) {
+                Text("Open Settings")
+            }
         }
     }
 }
 
-class SettingsProjection : Projection<SettingsState> {
+object SettingsProjection : Projection<SettingsState> {
     @Composable
     override fun project(output: SettingsState) {
+        val active = LocalScreenActive.current
         Column(
             modifier = Modifier.padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Settings", style = MaterialTheme.typography.headlineMedium)
-            Text("Version ${output.versionName}")
+            Text(output.displayName)
+            Button(onClick = output.onOpenRename, enabled = active) { Text("Rename") }
         }
+        if (active) output.rename?.let { Project(it) }
     }
 }
 
-class AppProjection : Projection<AppState> {
+object RenameProjection : Projection<RenameState> {
     @Composable
-    override fun project(output: AppState) {
-        when (val screen = output.screen) {
-            is AppScreen.Home -> Project(screen.state)
-            is AppScreen.Profile -> Project(screen.state)
-            is AppScreen.Settings -> Project(screen.state)
-        }
+    override fun project(output: RenameState) {
+        AlertDialog(
+            onDismissRequest = output.onDismiss,
+            title = { Text("Rename profile") },
+            text = {
+                OutlinedTextField(
+                    value = output.name,
+                    onValueChange = output.onNameChange,
+                    label = { Text("Name") },
+                    singleLine = true,
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = output.onSave, enabled = output.name.isNotBlank()) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = output.onDismiss) { Text("Cancel") }
+            },
+        )
     }
 }

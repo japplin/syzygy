@@ -1,44 +1,30 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.multiplatform)
+    alias(libs.plugins.android.kmp)
     alias(libs.plugins.kotlin.compose)
 }
 
-android {
-    namespace = "syzygy"
-    compileSdk = libs.versions.compileSdk.get().toInt()
-
-    defaultConfig {
-        minSdk = libs.versions.minSdk.get().toInt()
-    }
-
-    buildFeatures { compose = true }
-
-    testOptions {
-        unitTests.isReturnDefaultValues = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-}
-
 kotlin {
-    compilerOptions { jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17 }
-}
+    jvm {
+        compilerOptions { jvmTarget = JvmTarget.JVM_17 }
+    }
 
-dependencies {
-    api(platform(libs.compose.bom))
-    api(libs.compose.runtime)
-    api(libs.compose.runtime.saveable)
-    api(libs.molecule.runtime)
-    api(libs.kotlinx.coroutines.core)
-    api(libs.kotlinx.coroutines.android)
-    api(libs.androidx.lifecycle.viewmodel)
-    api(libs.androidx.lifecycle.viewmodel.ktx)
-    api(libs.androidx.lifecycle.viewmodel.compose)
+    android {
+        namespace = "syzygy"
+        compileSdk = libs.versions.compileSdk.get().toInt()
+        minSdk = libs.versions.minSdk.get().toInt()
+        compilerOptions { jvmTarget = JvmTarget.JVM_17 }
+    }
 
-    testImplementation(libs.junit)
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.turbine)
+    sourceSets {
+        commonMain.dependencies {
+            api(libs.compose.runtime)
+        }
+        jvmTest.dependencies {
+            implementation(libs.junit)
+            implementation(libs.appstate.transform.testing)
+        }
+    }
 }

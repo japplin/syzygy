@@ -1,23 +1,29 @@
 package syzygy.sample
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.Inject
 import dev.zacsweers.metro.SingleIn
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
-/** An app-scoped singleton reached by every screen's model — including through graph extensions. */
 @Inject
 @SingleIn(AppScope::class)
 class UserRepository {
-    val currentUserName: StateFlow<String> = MutableStateFlow("Ada")
+    private val name = MutableStateFlow("Ada")
+    val currentUserName = name.asStateFlow()
+
+    fun rename(value: String) {
+        name.value = value
+    }
 }
 
-/** A Profile-scoped binding, alive only while the Profile aligned unit is. */
 @Inject
 @SingleIn(ProfileScope::class)
 class ProfileAnalytics {
-    var screenViews: Int = 0
+    var screenViews: Int by mutableIntStateOf(0)
         private set
 
     fun screenViewed() {
