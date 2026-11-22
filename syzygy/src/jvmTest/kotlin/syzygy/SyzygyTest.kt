@@ -7,8 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Composition
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Recomposer
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.retain.LocalRetainedValuesStoreProvider
+import androidx.compose.runtime.retain.ManagedRetainedValuesStore
 import androidx.compose.runtime.setValue
 import kotlin.coroutines.EmptyCoroutineContext
 import org.junit.Assert.assertEquals
@@ -25,9 +28,9 @@ class SyzygyTest {
         var count by mutableStateOf(0)
         val state = transform(initialValue = "", scope = backgroundScope, dispatcher = testDispatcher) {
             syzygy {
-                val root = alignGraph { Any().also(created::add) }
+                alignGraph { Any().also(created::add) }
                 syzygy {
-                    alignGraph(root) { Any().also(created::add) }
+                    alignGraph { Any().also(created::add) }
                     "count = $count"
                 }
             }
@@ -45,15 +48,95 @@ class SyzygyTest {
     }
 
     @Test
+    fun retainsRootAndChildAcrossCompositionRemoval() = transformTest {
+        val store = ManagedRetainedValuesStore()
+        val events = mutableListOf<String>()
+        val presented = mutableListOf<Pair<CloseableGraph, CloseableGraph>>()
+        var show by mutableStateOf(true)
+
+        try {
+            transform(initialValue = Unit, scope = backgroundScope, dispatcher = testDispatcher) {
+                if (show) {
+                    LocalRetainedValuesStoreProvider(store) {
+                        syzygy {
+                            val root = alignGraph { CloseableGraph("root", events) }
+                            syzygy {
+                                val child = alignGraph { CloseableGraph("child", events) }
+                                SideEffect { presented += root to child }
+                            }
+                        }
+                    }
+                }
+            }
+
+            advance()
+            val (root, child) = presented.single()
+
+            show = false
+            advance()
+            assertEquals(listOf("align root", "align child", "leave child", "leave root"), events)
+
+            show = true
+            advance()
+            assertEquals(2, presented.size)
+            assertSame(root, presented.last().first)
+            assertSame(child, presented.last().second)
+
+            show = false
+            advance()
+            store.dispose()
+            assertEquals(listOf("close child", "close root"), events.filter { it.startsWith("close") })
+        } finally {
+            store.dispose()
+        }
+    }
+
+    @Test
+    fun rememberAlignedReusesAValueUntilTheGraphAlignmentChanges() = transformTest {
+        data class Graph(val name: String)
+        val first = Graph("graph")
+        val second = first.copy()
+        val calculations = mutableListOf<Any>()
+        var step by mutableStateOf(0)
+        val state = transform<Pair<Int, Int>?>(
+            initialValue = null,
+            scope = backgroundScope,
+            dispatcher = testDispatcher,
+        ) {
+            syzygy {
+                if (step < 2) alignGraph { first } else alignGraph { second }
+                val value = rememberAligned { graph ->
+                    calculations += graph
+                    calculations.size
+                }
+                step to value
+            }
+        }
+
+        advance()
+        assertEquals(0 to 1, state.value)
+        assertSame(first, calculations.single())
+
+        step = 1
+        advance()
+        assertEquals(1 to 1, state.value)
+
+        step = 2
+        advance()
+        assertEquals(2 to 2, state.value)
+        assertSame(second, calculations.last())
+    }
+
+    @Test
     fun replacingAParentKeyDisposesChildAlignmentBeforeClosingTheParent() = transformTest {
         var rootKey by mutableStateOf("first")
         val events = mutableListOf<String>()
         val state = transform(initialValue = "", scope = backgroundScope, dispatcher = testDispatcher) {
             val key = rootKey
             syzygy(key) {
-                val parent = alignGraph { CloseableGraph(key, events) }
+                alignGraph { CloseableGraph(key, events) }
                 syzygy {
-                    alignGraph(parent) { CloseableGraph("$key child", events) }
+                    alignGraph { CloseableGraph("$key child", events) }
                     key
                 }
             }
@@ -85,9 +168,9 @@ class SyzygyTest {
     fun strategyCanEnterAChildBeforeAlignGraphReturns() {
         val child = Any()
         val root = object : HasAlignmentStrategy {
-            override val alignmentStrategy = AlignmentStrategy { parent ->
+            override val alignmentStrategy = AlignmentStrategy {
                 syzygy {
-                    assertSame(child, alignGraph(parent) { child })
+                    assertSame(child, alignGraph { child })
                 }
             }
         }
@@ -99,6 +182,68 @@ class SyzygyTest {
             }
             assertNull(output)
         }
+    }
+
+    @Test
+    fun ancestorStrategiesRunBeforeTheGraphsOwnStrategyAndStayInTheirBranch() {
+        val events = mutableListOf<String>()
+        val root = object : HasChildAlignmentStrategy {
+            override val childAlignmentStrategy = AlignmentStrategy { events += "root" }
+        }
+        val branch = object : HasChildAlignmentStrategy {
+            override val childAlignmentStrategy = AlignmentStrategy { events += "branch" }
+        }
+        val leaf = object : HasAlignmentStrategy {
+            override val alignmentStrategy = AlignmentStrategy { events += "leaf" }
+        }
+
+        compose {
+            syzygy {
+                alignGraph { root }
+                syzygy {
+                    alignGraph { branch }
+                    syzygy { assertSame(leaf, alignGraph { leaf }) }
+                }
+                syzygy { assertSame(leaf, alignGraph { leaf }) }
+            }
+        }
+
+        assertEquals(listOf("root", "root", "branch", "leaf", "root", "leaf"), events)
+    }
+
+    @Test
+    fun closesStrategiesOnceWhenTheirOwningGraphRetires() = transformTest {
+        val closed = mutableListOf<String>()
+        var rootKey by mutableStateOf(0)
+        var showChild by mutableStateOf(true)
+        transform(initialValue = Unit, scope = backgroundScope, dispatcher = testDispatcher) {
+            val index = rootKey
+            syzygy(index) {
+                alignGraph { StrategyOwner("root $index", closed) }
+                if (showChild) {
+                    syzygy {
+                        val child = alignGraph { StrategyOwner("child", closed) }
+                        assertTrue(child.name == "child")
+                    }
+                }
+            }
+        }
+
+        advance()
+        assertTrue(closed.isEmpty())
+
+        showChild = false
+        advance()
+        assertEquals(listOf("strategy child", "graph child"), closed)
+
+        showChild = true
+        advance()
+        rootKey++
+        advance()
+        assertEquals(
+            listOf("strategy child", "graph child", "strategy child", "graph child", "strategy root 0", "graph root 0"),
+            closed,
+        )
     }
 
     @Test
@@ -145,53 +290,6 @@ class SyzygyTest {
     }
 
     @Test
-    fun requiresTheDirectParentByIdentity() {
-        val root = "root"
-        val wrongParent = assertThrows(IllegalStateException::class.java) {
-            compose {
-                syzygy {
-                    val parent = alignGraph { root }
-                    val sibling = syzygy {
-                        alignGraph(parent) { "first sibling" }
-                    }
-                    syzygy {
-                        alignGraph(sibling) { error("factory should not run") }
-                    }
-                }
-            }
-        }
-
-        assertTrue(wrongParent.message.orEmpty().contains("immediately enclosing"))
-        val ancestor = assertThrows(IllegalStateException::class.java) {
-            compose {
-                syzygy {
-                    val parent = alignGraph { root }
-                    syzygy {
-                        alignGraph(parent) { "middle" }
-                        syzygy {
-                            alignGraph(parent) { error("factory should not run") }
-                        }
-                    }
-                }
-            }
-        }
-        assertEquals(wrongParent.message, ancestor.message)
-
-        data class Graph(val name: String)
-        val equalParent = assertThrows(IllegalStateException::class.java) {
-            compose {
-                syzygy {
-                    val parent = alignGraph { Graph("root") }
-                    syzygy {
-                        alignGraph(parent.copy()) { error("factory should not run") }
-                    }
-                }
-            }
-        }
-        assertEquals(wrongParent.message, equalParent.message)
-    }
-
-    @Test
     fun abandonsAJustCreatedGraphWhenAlignmentFails() {
         val events = mutableListOf<String>()
         val duplicate = assertThrows(IllegalStateException::class.java) {
@@ -232,6 +330,26 @@ private class CloseableGraph(
 
     override fun close() {
         events.add("close $name")
+    }
+}
+
+private class StrategyOwner(
+    val name: String,
+    private val closed: MutableList<String>,
+) : HasAlignmentStrategy, HasChildAlignmentStrategy, AutoCloseable {
+    override val alignmentStrategy = object : AlignmentStrategy {
+        @Composable
+        override fun align(graph: Any) = Unit
+
+        override fun close() {
+            closed += "strategy $name"
+        }
+    }
+
+    override val childAlignmentStrategy = alignmentStrategy
+
+    override fun close() {
+        closed += "graph $name"
     }
 }
 

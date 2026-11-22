@@ -22,6 +22,9 @@ android {
 
     buildFeatures { compose = true }
 
+    // The Android Compose runtime calls android.os.Trace in the local presenter test.
+    testOptions { unitTests.isReturnDefaultValues = true }
+
     buildTypes {
         release { isMinifyEnabled = false }
     }
@@ -38,15 +41,19 @@ kotlin {
 
 dependencies {
     implementation(project(":syzygy"))
+    implementation(project(":syzygy-navigation"))
+    implementation(project(":syzygy-projection"))
 
     implementation(platform(libs.compose.bom))
-    implementation(libs.compose.animation)
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui)
     implementation(libs.androidx.activity.compose)
     implementation(libs.appstate.transform)
     implementation(libs.kotlinx.coroutines.android)
+
+    testImplementation(libs.appstate.transform.testing)
+    testImplementation(libs.junit)
 
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(platform(libs.compose.bom))

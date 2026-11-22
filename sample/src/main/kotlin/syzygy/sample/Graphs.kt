@@ -3,26 +3,43 @@ package syzygy.sample
 import dev.zacsweers.metro.AppScope
 import dev.zacsweers.metro.DependencyGraph
 import dev.zacsweers.metro.GraphExtension
+import dev.zacsweers.metro.Multibinds
+import dev.zacsweers.metro.Provides
+import dev.zacsweers.metro.SingleIn
 import syzygy.HasAlignmentStrategy
-import syzygy.projection.ProjectionAlignment
-import syzygy.projection.ProjectionEntry
+import syzygy.HasChildAlignmentStrategy
+import syzygy.navigation.Navigator
+import syzygy.projection.ProjectionHost
 import syzygy.projection.ProjectionRegistry
+import syzygy.projection.ProjectionTransition
 
 @DependencyGraph(AppScope::class)
-interface AppGraph {
+interface AppGraph : ProjectionRegistry, HasAlignmentStrategy, HasChildAlignmentStrategy {
+    val projectionHost: ProjectionHost
+    override val alignmentStrategy get() = projectionHost
+    override val childAlignmentStrategy get() = projectionHost
+
+    @Multibinds(allowEmpty = true)
+    val metroProjectionTransitions: Set<ProjectionTransition<*>>
+    override val projectionTransitions get() = metroProjectionTransitions
+
     val presenter: AppPresenter
     val homeGraphFactory: HomeGraph.Factory
     val profileGraphFactory: ProfileGraph.Factory
     val settingsGraphFactory: SettingsGraph.Factory
-}
 
-interface ProjectingGraph : ProjectionRegistry, HasAlignmentStrategy {
-    override val alignmentStrategy get() = ProjectionAlignment
+    @Provides
+    @SingleIn(AppScope::class)
+    fun provideNavigator(): Navigator<Destination> = Navigator(Destination.Home)
+
+    @DependencyGraph.Factory
+    fun interface Factory {
+        fun create(@Provides projectionHost: ProjectionHost): AppGraph
+    }
 }
 
 @GraphExtension(HomeScope::class)
-interface HomeGraph : ProjectingGraph {
-    override val projections get() = setOf(ProjectionEntry(HomeState::class, HomeProjection))
+interface HomeGraph : ProjectionRegistry {
     val presenter: HomePresenter
 
     @GraphExtension.Factory
@@ -32,8 +49,7 @@ interface HomeGraph : ProjectingGraph {
 }
 
 @GraphExtension(ProfileScope::class)
-interface ProfileGraph : ProjectingGraph {
-    override val projections get() = setOf(ProjectionEntry(ProfileState::class, ProfileProjection))
+interface ProfileGraph : ProjectionRegistry {
     val presenter: ProfilePresenter
 
     @GraphExtension.Factory
@@ -43,8 +59,7 @@ interface ProfileGraph : ProjectingGraph {
 }
 
 @GraphExtension(SettingsScope::class)
-interface SettingsGraph : ProjectingGraph {
-    override val projections get() = setOf(ProjectionEntry(SettingsState::class, SettingsProjection))
+interface SettingsGraph : ProjectionRegistry {
     val presenter: SettingsPresenter
     val renameGraphFactory: RenameGraph.Factory
 
@@ -55,8 +70,7 @@ interface SettingsGraph : ProjectingGraph {
 }
 
 @GraphExtension(RenameScope::class)
-interface RenameGraph : ProjectingGraph {
-    override val projections get() = setOf(ProjectionEntry(RenameState::class, RenameProjection))
+interface RenameGraph : ProjectionRegistry {
     val presenter: RenamePresenter
 
     @GraphExtension.Factory

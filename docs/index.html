@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Syzygy aligns dependency graphs, composable presenters, and their UI in Compose apps for Android and JVM.">
+  <title>Syzygy for Compose</title>
+  <link rel="icon" href="assets/syzygy-logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header wrap">
+    <a class="wordmark" href="./">Syzygy</a>
+    <nav aria-label="Main navigation">
+      <a href="#example">Example</a>
+      <a href="https://github.com/japplin/syzygy">GitHub</a>
+    </nav>
+  </header>
+
+  <main class="wrap" id="main">
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-copy">
+        <p class="label">Android &amp; JVM</p>
+        <h1 id="title">Align your<br class="hero-break"> Compose app.</h1>
+        <p class="intro">Syzygy ties a branch&rsquo;s dependency graph to the presenter that produces its state and the UI that renders it.</p>
+        <a class="button" href="https://github.com/japplin/syzygy#readme">Read the guide</a>
+      </div>
+      <img class="hero-art" src="assets/syzygy-logo-nebula.png" width="512" height="512" alt="Three bright stars aligned in a band of galactic dust.">
+    </section>
+
+    <section class="section example" id="example" aria-labelledby="example-title">
+      <div>
+        <h2 id="example-title">One graph per branch</h2>
+        <p>Call <code>alignGraph</code> inside <code>syzygy</code> and return your presenter&rsquo;s state. Compose keeps the graph across recompositions. Changing the key replaces the branch and its descendants.</p>
+        <p>In the Android sample, Settings creates a child graph for Rename. The graph supplies the presenter, and the presenter&rsquo;s state selects the dialog renderer. During an exit transition, a projection keeps its graph open until Compose removes the outgoing UI.</p>
+        <a href="https://github.com/japplin/syzygy/tree/main/sample">Explore the Android sample</a>
+      </div>
+      <figure class="code-example">
+        <figcaption>A document-scoped presenter</figcaption>
+        <pre tabindex="0"><code><span class="annotation">@Composable</span>
+<span class="keyword">fun</span> presentDocument(
+    factory: EditorGraph.Factory,
+    documentId: String,
+): EditorState {
+    <span class="keyword">return</span> syzygy(key = documentId) {
+        <span class="keyword">val</span> graph = alignGraph {
+            factory.create(documentId)
+        }
+        graph.presenter.present()
+    }
+}</code></pre>
+      </figure>
+    </section>
+
+    <section class="section" aria-labelledby="modules-title">
+      <h2 id="modules-title">Modules</h2>
+      <dl class="modules">
+        <div>
+          <dt><a href="https://github.com/japplin/syzygy/tree/main/syzygy"><code>syzygy</code></a></dt>
+          <dd>The alignment DSL and graph lifecycle.</dd>
+        </div>
+        <div>
+          <dt><a href="https://github.com/japplin/syzygy/tree/main/syzygy-projection"><code>syzygy-projection</code></a></dt>
+          <dd>Match state to composables and keep outgoing graphs open during transitions.</dd>
+        </div>
+        <div>
+          <dt><a href="https://github.com/japplin/syzygy/tree/main/syzygy-navigation"><code>syzygy-navigation</code></a></dt>
+          <dd>An observable navigation stack and Compose Back handling.</dd>
+        </div>
+      </dl>
+      <a href="https://github.com/japplin/syzygy/blob/main/BUILDING.md">Build the library and run the sample</a>
+    </section>
+  </main>
+
+  <footer class="site-footer wrap">
+    <span>Syzygy for Compose</span>
+    <a href="https://github.com/japplin/syzygy">View source on GitHub</a>
+  </footer>
+</body>
+</html>

@@ -4,11 +4,14 @@ Use JDK 21 and Android SDK Platform 37. Configure the SDK with `ANDROID_HOME` or
 the project's ignored `local.properties`. The Gradle wrapper pins the Gradle version and checksum.
 
 ```sh
-./gradlew :syzygy:jvmTest :sample:assembleDebug
+./gradlew :syzygy:jvmTest :syzygy-projection:jvmTest :syzygy-navigation:jvmTest :sample:testDebugUnitTest :sample:assembleDebug
 ```
 
-The JVM suite runs the DSL and projection bridge in a headless Compose runtime. Build and run the
-Android navigation and Activity recreation test on a connected device or emulator with API 26 or newer.
+The JVM suites cover the DSL, projection bridge, and Back dispatch in headless Compose.
+The core suite exercises graph alignment in AppState Transform and Molecule.
+The sample tests its presenter and timer with AppState's `transformTest`.
+Run the Android navigation and Activity recreation test on a connected device or emulator with
+API 26 or newer.
 
 ```sh
 ./gradlew :sample:connectedDebugAndroidTest

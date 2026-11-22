@@ -10,41 +10,48 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import dev.zacsweers.metro.Inject
 import kotlinx.coroutines.delay
+import syzygy.navigation.NavEntry
+import syzygy.navigation.Navigator
 import syzygy.syzygy
 
 @Inject
-class AppPresenter(private val navigator: Navigator) {
+class AppPresenter(
+    private val navigator: Navigator<Destination>,
+    private val homeGraphFactory: HomeGraph.Factory,
+    private val profileGraphFactory: ProfileGraph.Factory,
+    private val settingsGraphFactory: SettingsGraph.Factory,
+) {
     @Composable
-    fun present(graph: AppGraph): AppUiState {
+    fun present(): AppUiState {
         val entry = navigator.current
-        val screen = syzygy(key = entry.id) {
-            when (entry.destination) {
+        val screen = syzygy(key = entry) {
+            when (entry.route) {
                 Destination.Home -> {
-                    val home = alignGraph(graph) { graph.homeGraphFactory.create() }
-                    home.presenter.present(entry.id)
+                    val home = alignGraph { homeGraphFactory.create() }
+                    home.presenter.present(entry)
                 }
                 Destination.Profile -> {
-                    val profile = alignGraph(graph) { graph.profileGraphFactory.create() }
-                    profile.presenter.present(entry.id)
+                    val profile = alignGraph { profileGraphFactory.create() }
+                    profile.presenter.present(entry)
                 }
                 Destination.Settings -> {
-                    val settings = alignGraph(graph) { graph.settingsGraphFactory.create() }
-                    settings.presenter.present(settings, entry.id)
+                    val settings = alignGraph { settingsGraphFactory.create() }
+                    settings.presenter.present(entry)
                 }
             }
         }
         return AppUiState(
-            entryId = entry.id,
+            entry = entry,
             screen = screen,
-            onBack = if (navigator.canGoBack) ({ navigator.back(entry.id) }) else null,
+            onBack = if (navigator.canPop) ({ navigator.pop(entry) }) else null,
         )
     }
 }
 
 @Inject
-class HomePresenter(private val users: UserRepository, private val navigator: Navigator) {
+class HomePresenter(private val users: UserRepository, private val navigator: Navigator<Destination>) {
     @Composable
-    fun present(entryId: Long): HomeState {
+    fun present(entry: NavEntry<Destination>): HomeState {
         val name by users.currentUserName.collectAsState()
         var seconds by remember { mutableIntStateOf(0) }
         LaunchedEffect(Unit) {
@@ -56,7 +63,7 @@ class HomePresenter(private val users: UserRepository, private val navigator: Na
         return HomeState(
             greeting = "Hello, $name",
             secondsOnScreen = seconds,
-            onOpenProfile = { navigator.goTo(entryId, Destination.Profile) },
+            onOpenProfile = { navigator.push(Destination.Profile, from = entry) },
         )
     }
 }
@@ -65,31 +72,35 @@ class HomePresenter(private val users: UserRepository, private val navigator: Na
 class ProfilePresenter(
     private val users: UserRepository,
     private val analytics: ProfileAnalytics,
-    private val navigator: Navigator,
+    private val navigator: Navigator<Destination>,
 ) {
     @Composable
-    fun present(entryId: Long): ProfileState {
+    fun present(entry: NavEntry<Destination>): ProfileState {
         val name by users.currentUserName.collectAsState()
         LaunchedEffect(Unit) { analytics.screenViewed() }
         return ProfileState(
             displayName = name,
             screenViews = analytics.screenViews,
-            onOpenSettings = { navigator.goTo(entryId, Destination.Settings) },
+            onOpenSettings = { navigator.push(Destination.Settings, from = entry) },
         )
     }
 }
 
 @Inject
-class SettingsPresenter(private val users: UserRepository, private val navigator: Navigator) {
+class SettingsPresenter(
+    private val users: UserRepository,
+    private val navigator: Navigator<Destination>,
+    private val renameGraphFactory: RenameGraph.Factory,
+) {
     @Composable
-    fun present(graph: SettingsGraph, entryId: Long): SettingsState {
+    fun present(entry: NavEntry<Destination>): SettingsState {
         val name by users.currentUserName.collectAsState()
         var renameOpen by remember { mutableStateOf(false) }
         val rename = if (renameOpen) {
             syzygy {
-                val child = alignGraph(graph) { graph.renameGraphFactory.create() }
+                val child = alignGraph { renameGraphFactory.create() }
                 child.presenter.present(
-                    isActive = { navigator.current.id == entryId && renameOpen },
+                    isActive = { navigator.current === entry && renameOpen },
                     onDismiss = { renameOpen = false },
                 )
             }
@@ -98,7 +109,7 @@ class SettingsPresenter(private val users: UserRepository, private val navigator
         }
         return SettingsState(
             displayName = name,
-            onOpenRename = { if (navigator.current.id == entryId) renameOpen = true },
+            onOpenRename = { if (navigator.current === entry) renameOpen = true },
             rename = rename,
         )
     }

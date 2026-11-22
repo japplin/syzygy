@@ -1,10 +1,13 @@
 [versions]
 agp = "9.3.3"
 kotlin = "2.4.21"
-metro = "1.5.2"
+metro = "1.6.0"
 coroutines = "1.11.0"
-appstate = "1.0.0-alpha02"
+appstate = "1.0.0-alpha03"
+molecule = "2.2.0"
+turbine = "1.2.1"
 composeRuntime = "1.12.1"
+composeAnimation = "1.12.2"
 composeBom = "2026.09.00"
 activity = "1.13.0"
 junit = "4.13.2"
@@ -26,7 +29,8 @@ metro = { id = "dev.zacsweers.metro", version.ref = "metro" }
 [libraries]
 compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "composeRuntime" }
-compose-animation = { group = "androidx.compose.animation", name = "animation" }
+compose-runtime-retain = { group = "androidx.compose.runtime", name = "runtime-retain", version.ref = "composeRuntime" }
+compose-animation = { group = "org.jetbrains.compose.animation", name = "animation", version.ref = "composeAnimation" }
 compose-foundation = { group = "androidx.compose.foundation", name = "foundation" }
 compose-material3 = { group = "androidx.compose.material3", name = "material3" }
 compose-ui = { group = "androidx.compose.ui", name = "ui" }
@@ -35,7 +39,12 @@ compose-ui-test = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activity" }
 appstate-transform = { group = "androidx.appstate.transform", name = "transform", version.ref = "appstate" }
 appstate-transform-testing = { group = "androidx.appstate.transform", name = "transform-testing", version.ref = "appstate" }
+molecule-runtime = { group = "app.cash.molecule", name = "molecule-runtime", version.ref = "molecule" }
+turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
+kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
+kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
+metro-runtime-coroutines = { group = "dev.zacsweers.metro", name = "runtime-coroutines", version.ref = "metro" }
 
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTest" }
