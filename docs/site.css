@@ -1,15 +1,20 @@
 :root {
-  color-scheme: light;
-  --paper: #f7f4ed;
-  --ink: #211d19;
-  --muted: #564d42;
-  --rule: #d5cbbd;
-  --accent: #762f1d;
-  --night: #151619;
+  color-scheme: dark;
+  --background: #090c14;
+  --surface: #111623;
+  --text: #f3efe7;
+  --muted: #b8c1d0;
+  --rule: #293343;
+  --accent: #efba82;
+  --accent-hover: #ffd5a5;
+  --button-background: #281d1a;
+  --button-hover: #3c2923;
+  --button-border: #9a6846;
+  --keyword: #c7b6f3;
   font-family: system-ui, sans-serif;
   line-height: 1.6;
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--background);
+  color: var(--text);
 }
 
 *, *::before, *::after {
@@ -20,12 +25,18 @@ body, h1, h2, p, figure, dl, dd {
   margin: 0;
 }
 
+body {
+  min-height: 100vh;
+  background: radial-gradient(ellipse 54rem 38rem at 75% 0%, #171c2d, transparent);
+}
+
 a {
   color: var(--accent);
   text-underline-offset: 0.22em;
 }
 
 a:hover {
+  color: var(--accent-hover);
   text-decoration-thickness: 0.13em;
 }
 
@@ -44,7 +55,7 @@ a:hover {
   top: 0.5rem;
   left: 1.5rem;
   padding: 0.5rem 0.8rem;
-  background: var(--paper);
+  background: var(--surface);
   transform: translateY(calc(-100% - 1rem));
 }
 
@@ -72,7 +83,7 @@ a:hover {
 }
 
 .site-header a {
-  color: var(--ink);
+  color: var(--text);
   text-decoration: none;
 }
 
@@ -126,20 +137,24 @@ h1 {
   display: inline-block;
   margin-top: 1.65rem;
   padding: 0.65rem 1.12rem;
-  background: var(--accent);
-  color: white;
+  border: 1px solid var(--button-border);
+  background: var(--button-background);
+  color: var(--accent);
   text-decoration: none;
 }
 
 .button:hover {
-  background: #602515;
+  background: var(--button-hover);
 }
 
 .hero-art {
   display: block;
   width: 100%;
   height: auto;
-  background: var(--night);
+  background: var(--surface);
+  outline: 1px solid var(--rule);
+  outline-offset: -1px;
+  box-shadow: 0 1rem 4rem #0005;
 }
 
 .section {
@@ -164,14 +179,14 @@ h2 {
 }
 
 .code-example {
-  background: var(--night);
-  color: #f7f1e7;
+  border: 1px solid var(--rule);
+  background: var(--surface);
 }
 
 .code-example figcaption {
   padding: 0.8rem 1.1rem;
-  border-bottom: 1px solid #414043;
-  color: #e2cfb7;
+  border-bottom: 1px solid var(--rule);
+  color: var(--muted);
   font-size: 0.875rem;
 }
 
@@ -188,16 +203,15 @@ code, pre {
 }
 
 pre:focus-visible {
-  outline-color: #f3c694;
   outline-offset: -3px;
 }
 
 .annotation {
-  color: #f3c694;
+  color: var(--accent);
 }
 
 .keyword {
-  color: #d3baff;
+  color: var(--keyword);
 }
 
 .modules {
