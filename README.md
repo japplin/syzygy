@@ -4,8 +4,7 @@
 
 [GitHub Pages documentation](https://japplin.github.io/syzygy/)
 
-In astronomy, a syzygy is the alignment of three or more celestial bodies. During a solar eclipse,
-the Sun, Moon, and Earth line up, with the Moon in the middle.
+A syzygy is the alignment of three or more celestial bodies.
 
 Syzygy brings that idea to Compose by aligning three trees in your app.
 
